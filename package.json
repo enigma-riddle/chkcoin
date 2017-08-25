@@ -1,0 +1,23 @@
+{
+  "name": "chkcoin",
+  "version": "1.0.0",
+  "description": "chkcoin",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/enigma-riddle/chkcoin.git"
+  },
+  "config": { "ACCESS_KEY":"ACCESS_KEY", "API_SECRET":"API_SECRET" },
+  "author": "enigma-riddle",
+  "bugs": {
+    "url": "https://github.com/enigma-riddle/chkcoin/issues"
+  },
+  "homepage": "https://github.com/enigma-riddle/chkcoin#readme",
+  "dependencies": {
+    "coincheck": "^0.1.2",
+    "cron": "^1.2.1"
+  }
+}

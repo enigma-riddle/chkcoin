@@ -3,49 +3,67 @@ require 'ruby_coincheck_client'
 
 include Clockwork
 
-#60分ごとに判定(RANGE=60)
-INTERVAL = 60
-#ドルコスト平均法で買い付ける価格
+#指定分ごとに判定
+INTERVAL = 15
+#ドルコスト平均法で売買する価格
 SPECIFICYEN = 10000
 
-$hour_average = 1
-$last_hour_average = 1
+$interval_average
+$last_interval_average
+$buy_flag = true
+$sell_flag = true
 
 cc = CoincheckClient.new(ENV['API_KEY'],ENV['SECRET_KEY'])
 arr_val = [];
 
 every(INTERVAL.second, 'read_ticker') do
-  puts 'read_ticker'
   response = cc.read_ticker
-  # puts JSON.parse(response.body)
   ticker = JSON.parse(response.body)
   arr_val << ticker['last'].to_f
-  # puts arr_val.last
-  # puts ticker['last'].to_f
-  if arr_val.size >= INTERVAL
-    puts arr_val.size
-    puts arr_val.inject(:+) / arr_val.size.to_f
+  if arr_val.size >= 60
     arr_val.shift()
   end
 end
 # INTERVAL.minutes
-every(INTERVAL.minutes, 'buy') do
-  $hour_average = arr_val.inject(:+) / arr_val.size.to_f
-  puts 'buy'
-  puts $hour_average
-  puts $last_hour_average
-  puts $last_hour_average * 0.99
+every(INTERVAL.minutes, 'trade') do
+  $interval_average = arr_val.inject(:+) / arr_val.size.to_f
+  $last_interval_average = $interval_average if $last_interval_average.nil?
+
+  puts $interval_average
+  puts $last_interval_average
+  puts $last_interval_average * 0.99
+  puts $last_interval_average * 1.01
+
   response = cc.read_orders
   orders = JSON.parse(response.body)
   puts orders;
   sleep 1
-  if orders['orders'] == [] && $hour_average < $last_hour_average * 0.99
+
+  if orders['orders'] == [] && $interval_average < $last_interval_average * 0.99 && $buy_flag
     puts 'buyorder'
-    downrate = $hour_average.to_f * 0.99
+    downrate = $interval_average.to_f * 0.99
     buy_amount = SPECIFICYEN / downrate
     response = cc.create_orders(rate: downrate, amount: buy_amount, order_type: "buy")
     create_orders = JSON.parse(response.body)
     puts create_orders
+    $buy_flag = false
+    $sell_flag = true
   end
-  $last_hour_average = $hour_average
+
+  if orders['orders'] == [] && $interval_average > $last_interval_average * 1.01 && $sell_flag
+    puts 'sellorder'
+    uprate = $interval_average.to_f * 1.01
+    sell_amount = SPECIFICYEN / uprate
+    response = cc.create_orders(rate: uprate, amount: sell_amount, order_type: "sell")
+    create_orders = JSON.parse(response.body)
+    puts create_orders
+    $buy_flag = true
+    $sell_flag = false
+  end
+  $last_interval_average = $interval_average
+end
+
+every(3.hour, 'reset_flag') do
+  $buy_flag = true
+  $sell_flag = true
 end

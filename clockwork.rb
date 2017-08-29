@@ -12,6 +12,7 @@ $interval_average
 $last_interval_average
 $buy_flag = true
 $sell_flag = true
+$diff = 0.005
 
 cc = CoincheckClient.new(ENV['API_KEY'],ENV['SECRET_KEY'])
 arr_val = [];
@@ -31,17 +32,17 @@ every(INTERVAL.minutes, 'trade') do
 
   puts $interval_average
   puts $last_interval_average
-  puts $last_interval_average * 0.99
-  puts $last_interval_average * 1.01
+  puts $last_interval_average * (1 - $diff)
+  puts $last_interval_average * (1 + $diff)
 
   response = cc.read_orders
   orders = JSON.parse(response.body)
   puts orders;
   sleep 1
 
-  if orders['orders'] == [] && $interval_average < $last_interval_average * 0.99 && $buy_flag
+  if $interval_average < $last_interval_average * (1 - $diff) && $buy_flag
     puts 'buyorder'
-    downrate = $interval_average.to_f * 0.99
+    downrate = $interval_average.to_f * (1 - $diff)
     buy_amount = SPECIFICYEN / downrate
     response = cc.create_orders(rate: downrate, amount: buy_amount, order_type: "buy")
     create_orders = JSON.parse(response.body)
@@ -50,9 +51,9 @@ every(INTERVAL.minutes, 'trade') do
     $sell_flag = true
   end
 
-  if orders['orders'] == [] && $interval_average > $last_interval_average * 1.01 && $sell_flag
+  if $interval_average > $last_interval_average * (1 + $diff) && $sell_flag
     puts 'sellorder'
-    uprate = $interval_average.to_f * 1.01
+    uprate = $interval_average.to_f * (1 + $diff)
     sell_amount = SPECIFICYEN / uprate
     response = cc.create_orders(rate: uprate, amount: sell_amount, order_type: "sell")
     create_orders = JSON.parse(response.body)
